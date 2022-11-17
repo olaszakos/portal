@@ -22,9 +22,20 @@ const hostnameCanisterIdMap: Record<string, [string, string]> = {
   ],
 };
 
-function isNetlifyFunctionUrl(urlString: string): boolean {
+function isExcludedUrl(urlString: string): boolean {
   const url = new URL(urlString);
-  return url.pathname.startsWith('/.netlify/functions/');
+  return (
+    url.pathname.startsWith('/.netlify/functions/') ||
+    [
+      '/install.sh',
+      '/manifest.json',
+      '/sdk-license-agreement.txt',
+      '/tungsten-license-agreement.txt',
+      '/sodium-license-agreement.txt',
+      '/eula',
+      '/eula-storage',
+    ].includes(url.pathname)
+  );
 }
 
 const shouldFetchRootKey = Boolean(process.env.FORCE_FETCH_ROOT_KEY);
@@ -262,7 +273,11 @@ export async function handleRequest(request: Request): Promise<Response> {
    */
   const maybeCanisterId = maybeResolveCanisterIdFromHttpRequest(request);
 
-  const isNetlifyFunction = isNetlifyFunctionUrl(request.url);
+  const isExcluded = isExcludedUrl(request.url);
+
+  if (isExcluded) {
+    console.log(`Excluded url:`, request.url);
+  }
 
   /**
    * We forward all requests to /api/ to the replica, as is.
@@ -284,7 +299,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     });
   }
 
-  if (!isNetlifyFunction && maybeCanisterId) {
+  if (!isExcluded && maybeCanisterId) {
     try {
       const origin = splitHostnameForCanisterId(url.hostname);
       const [agent, actor] = await createAgentAndActor(
@@ -430,7 +445,7 @@ export async function handleRequest(request: Request): Promise<Response> {
   // would load by reference. If you want security for your users at that point you
   // should use SRI to make sure the resource matches.
   if (
-    isNetlifyFunction ||
+    isExcluded ||
     !url.hostname.endsWith(swDomains) ||
     url.hostname.endsWith(`raw.${swDomains}`)
   ) {

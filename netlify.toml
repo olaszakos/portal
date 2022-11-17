@@ -4,5 +4,9 @@ publish = "build"
 
 
 [context.production]
-command = "git submodule update --init && npm run build && cd service-worker && npm install && npm run build && cp ../static/_redirects ./dist-prod/ && cp ../static/_headers ./dist-prod/"
+command = """\
+  git submodule update --init && npm run build && \
+  cd service-worker && npm install && npm run build && \
+  cp ../static/_redirects ./dist-prod/ && cat _redirects.extra >> ./dist-prod/_redirects && \
+  cp ../static/_headers ./dist-prod/"""
 publish = "service-worker/dist-prod"
